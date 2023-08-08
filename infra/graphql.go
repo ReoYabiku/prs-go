@@ -3,6 +3,7 @@ package infra
 import (
 	"context"
 	"prs-go/entity"
+	"prs-go/repository"
 
 	"github.com/diegosz/go-graphql-client"
 	"github.com/morikuni/failure"
@@ -12,6 +13,8 @@ import (
 type GraphQL struct {
 	client *graphql.Client
 }
+
+var _ repository.GitHub = &GraphQL{}
 
 func NewGraphQL(endpoint string, accessToken string) *GraphQL {
 	src := oauth2.StaticTokenSource(
@@ -25,19 +28,29 @@ func NewGraphQL(endpoint string, accessToken string) *GraphQL {
 	}
 }
 
-type repository struct {
+type pullRequest struct {
 	URL             string
 	RepositoryOwner string
 }
 
-func (g *GraphQL) ListURL(sq *entity.SearchQuery) ([]*entity.URL, error) {
-	// TODO: urlとrepository nameの取得
+func (g *GraphQL) ListURL() ([]*entity.URL, error) {
+	prs, err := g.QueryRepos()
+	if err != nil {
+		return nil, failure.Wrap(err)
+	}
 
-	// TODO: repository nameによる選別
-	return nil, nil
+	var urls []*entity.URL
+
+	for _, pr := range prs {
+		if pr.RepositoryOwner == "ficilcom" {
+			urls = append(urls, (*entity.URL)(&pr.URL))
+		}
+	}
+
+	return urls, nil
 }
 
-func (g *GraphQL) QueryRepos() ([]*repository, error) {
+func (g *GraphQL) QueryRepos() ([]*pullRequest, error) {
 	var query struct {
 		User struct {
 			PullRequests struct {
@@ -58,14 +71,14 @@ func (g *GraphQL) QueryRepos() ([]*repository, error) {
 		return nil, failure.Wrap(err)
 	}
 
-	var repos []*repository
+	var prs []*pullRequest
 
 	for _, repo := range query.User.PullRequests.Nodes {
-		repos = append(repos, &repository{
+		prs = append(prs, &pullRequest{
 			URL:             string(repo.Url),
 			RepositoryOwner: string(repo.Repository.Owner.Login),
 		})
 	}
 
-	return repos, nil
+	return prs, nil
 }

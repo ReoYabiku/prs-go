@@ -2,6 +2,7 @@ package infra
 
 import (
 	"os"
+	"prs-go/entity"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,7 @@ var (
 
 func TestMain(m *testing.M) {
 	endpoint := "https://api.github.com/graphql"
-	accessToken := "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"
+	accessToken := os.Getenv("GITHUB_TOKEN")
 	graphQL = NewGraphQL(endpoint, accessToken)
 
 	res := m.Run()
@@ -21,16 +22,39 @@ func TestMain(m *testing.M) {
 	os.Exit(res)
 }
 
-func TestQueryRepos(t *testing.T) {
+func TestListURL(t *testing.T) {
 	tests := []struct {
 		name   string
-		checks func(*testing.T, error, []*repository)
+		checks func(*testing.T, error, []*entity.URL)
 	}{
 		{
 			name: "not empty",
-			checks: func(t *testing.T, err error, got []*repository) {
+			checks: func(t *testing.T, err error, got []*entity.URL) {
 				assert.NoError(t, err)
-				assert.NotEmpty(t, got, "debug")
+				assert.NotEmpty(t, got)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := graphQL.ListURL()
+
+			tt.checks(t, err, got)
+		})
+	}
+}
+
+func TestQueryRepos(t *testing.T) {
+	tests := []struct {
+		name   string
+		checks func(*testing.T, error, []*pullRequest)
+	}{
+		{
+			name: "not empty",
+			checks: func(t *testing.T, err error, got []*pullRequest) {
+				assert.NoError(t, err)
+				assert.NotEmpty(t, got)
 			},
 		},
 	}

@@ -3,5 +3,5 @@ package repository
 import "prs-go/entity"
 
 type GitHub interface {
-	ListURL(*entity.SearchQuery) []*entity.URL
+	ListURL() ([]*entity.URL, error)
 }
