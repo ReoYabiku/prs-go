@@ -2,17 +2,20 @@ package main
 
 import (
 	"log"
-	"prs-go/entity"
+	"os"
+	"prs-go/infra"
+	"prs-go/usecase"
 )
 
 func main() {
-	var url entity.URL = "https://www.google.com"
-	urls := []*entity.URL{&url}
+	endpoint := "https://api.github.com/graphql"
+	accessToken := os.Getenv("GITHUB_TOKEN")
 
-	for _, url := range urls {
-		err := url.Call()
-		if err != nil {
-			log.Fatal(err)
-		}
+	graphQL := infra.NewGraphQL(endpoint, accessToken)
+	u := usecase.NewUsecase(graphQL)
+
+	err := u.OpenURLs()
+	if err != nil {
+		log.Fatal(err)
 	}
 }
