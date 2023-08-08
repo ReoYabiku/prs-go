@@ -2,7 +2,6 @@ package infra
 
 import (
 	"context"
-	"fmt"
 	"prs-go/entity"
 
 	"github.com/diegosz/go-graphql-client"
@@ -16,7 +15,7 @@ type GraphQL struct {
 
 func NewGraphQL(endpoint string, accessToken string) *GraphQL {
 	src := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: fmt.Sprintf("Bearer %s", accessToken)},
+		&oauth2.Token{AccessToken: accessToken},
 	)
 	httpClient := oauth2.NewClient(context.Background(), src)
 	client := graphql.NewClient(endpoint, httpClient)
@@ -38,19 +37,19 @@ func (g *GraphQL) ListURL(sq *entity.SearchQuery) ([]*entity.URL, error) {
 	return nil, nil
 }
 
-func (g *GraphQL) QueryRepos() (*repository, error) {
+func (g *GraphQL) QueryRepos() ([]*repository, error) {
 	var query struct {
 		User struct {
 			PullRequests struct {
-				Nodes struct {
+				Nodes []struct {
 					Url        graphql.String
 					Repository struct {
 						Owner struct {
-							login graphql.String
+							Login graphql.String
 						}
 					}
 				}
-			} `graphql:"pullRequests(last: \"10\", states: \"OPEN\")"`
+			} `graphql:"pullRequests(last: 10, states: OPEN)"`
 		} `graphql:"user(login: \"ReoYabiku\")"`
 	}
 
@@ -59,8 +58,14 @@ func (g *GraphQL) QueryRepos() (*repository, error) {
 		return nil, failure.Wrap(err)
 	}
 
-	return &repository{
-		URL:             string(query.User.PullRequests.Nodes.Url),
-		RepositoryOwner: string(query.User.PullRequests.Nodes.Repository.Owner.login),
-	}, nil
+	var repos []*repository
+
+	for _, repo := range query.User.PullRequests.Nodes {
+		repos = append(repos, &repository{
+			URL:             string(repo.Url),
+			RepositoryOwner: string(repo.Repository.Owner.Login),
+		})
+	}
+
+	return repos, nil
 }
